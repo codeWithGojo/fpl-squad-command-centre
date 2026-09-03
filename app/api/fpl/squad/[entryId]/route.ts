@@ -1,4 +1,4 @@
-import type { FplEvent, FplPlayer } from "@/lib/fpl-types";
+import type { ClassicLeague, FplEvent, FplPlayer, SeasonHistoryRow } from "@/lib/fpl-types";
 import { errorResponse, fetchFplJson, FplApiError } from "@/lib/fpl-server";
 
 type Bootstrap = { events?: FplEvent[]; elements?: FplPlayer[] };
@@ -18,13 +18,17 @@ type Picks = {
     overall_rank?: number;
   };
 };
-type EntryHistory = { chips?: Array<{ name: string; event: number }> };
+type EntryHistory = {
+  chips?: Array<{ name: string; event: number }>;
+  current?: SeasonHistoryRow[];
+};
 type Entry = {
   name?: string;
   player_first_name?: string;
   player_last_name?: string;
   summary_overall_points?: number;
   summary_overall_rank?: number;
+  leagues?: { classic?: ClassicLeague[] };
 };
 
 export async function GET(_request: Request, context: { params: Promise<{ entryId: string }> }) {
@@ -65,6 +69,8 @@ export async function GET(_request: Request, context: { params: Promise<{ entryI
       overallPoints: entry.data.summary_overall_points ?? picks.data.entry_history?.total_points,
       overallRank: entry.data.summary_overall_rank ?? picks.data.entry_history?.overall_rank,
       usedChips: history.data.chips ?? [],
+      history: Array.isArray(history.data.current) ? history.data.current : [],
+      leagues: Array.isArray(entry.data.leagues?.classic) ? entry.data.leagues.classic : [],
     }, { headers: { "Cache-Control": "public, s-maxage=1800, stale-while-revalidate=21600" } });
   } catch (error) {
     return errorResponse(error);

@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/fpl-alerts",
+      "schedule": "0 21 * * *"
+    }
+  ]
+}

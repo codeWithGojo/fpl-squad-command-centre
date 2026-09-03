@@ -6,6 +6,7 @@ type Bootstrap = {
   elements?: FplPlayer[];
   events?: FplEvent[];
   element_types?: Array<{ id: number; singular_name_short: string }>;
+  total_players?: number;
 };
 
 export async function GET() {
@@ -26,6 +27,7 @@ export async function GET() {
       events,
       fixtures: fixtureResult.data,
       positions: Object.fromEntries((element_types ?? []).map((type) => [type.id, type.singular_name_short])),
+      totalPlayers: Number(bootstrapResult.data.total_players) || 0,
       meta: {
         source: "Official Fantasy Premier League API",
         fetchedAt: new Date(fetchedAt).toISOString(),

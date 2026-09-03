@@ -1,4 +1,4 @@
-import type { CorePayload, FplEvent, FplFixture, FplPlayer, FplTeam, SquadPayload } from "@/lib/fpl-types";
+import type { CorePayload, FplEvent, FplFixture, FplPlayer, FplTeam, LivePlayer, SquadPayload } from "@/lib/fpl-types";
 
 export type PlayerProjection = {
   player: FplPlayer;
@@ -40,6 +40,37 @@ export type GameweekAnalysis = {
   range: [number, number];
 };
 
+export type PriceSignal = {
+  player: FplPlayer;
+  direction: "Rise" | "Fall" | "Stable";
+  confidence: number;
+  netTransfers: number;
+  ownershipMomentum: number;
+  why: string;
+};
+
+export type DifferentialPick = PlayerProjection & {
+  ownership: number;
+  differentialScore: number;
+};
+
+export type FixtureSwing = {
+  team: FplTeam;
+  averageFdr: number;
+  homeGames: number;
+  blanks: number;
+  fixtures: Array<{ event: number; opponent: string; home: boolean; fdr: number }>;
+};
+
+export type ChipTiming = {
+  key: ChipAdvice["key"];
+  name: string;
+  bestEvent: number;
+  score: number;
+  verdict: ChipAdvice["verdict"];
+  why: string;
+};
+
 const FORMATIONS = [
   [3, 5, 2], [3, 4, 3], [4, 5, 1], [4, 4, 2],
   [4, 3, 3], [5, 4, 1], [5, 3, 2], [5, 2, 3],
@@ -54,7 +85,7 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
-function fixtureForPlayer(player: FplPlayer, event: FplEvent, fixtures: FplFixture[], teamsById: Map<number, FplTeam>) {
+function fixtureForPlayer(player: Pick<FplPlayer, "team">, event: FplEvent, fixtures: FplFixture[], teamsById: Map<number, FplTeam>) {
   return fixtures.filter((fixture) => fixture.event === event.id && (fixture.team_h === player.team || fixture.team_a === player.team)).map((fixture) => {
     const home = fixture.team_h === player.team;
     const opponentId = home ? fixture.team_a : fixture.team_h;
@@ -114,7 +145,7 @@ export function projectPlayer(player: FplPlayer, event: FplEvent, data: CorePayl
   };
 }
 
-function chooseBestLineup(projections: PlayerProjection[]) {
+export function chooseBestLineup(projections: PlayerProjection[]) {
   const groups = new Map<number, PlayerProjection[]>();
   for (const projection of projections) {
     const current = groups.get(projection.player.element_type) ?? [];
@@ -137,6 +168,122 @@ function chooseBestLineup(projections: PlayerProjection[]) {
     if (score > bestScore) { best = lineup; bestScore = score; }
   }
   return best.length ? best : projections.toSorted((a, b) => b.points - a.points).slice(0, 11);
+}
+
+export function predictPriceChanges(data: CorePayload) {
+  const estimatedManagers = Math.max(data.totalPlayers, 1);
+  return data.players.map<PriceSignal>((player) => {
+    const transfersIn = player.transfers_in_event ?? 0;
+    const transfersOut = player.transfers_out_event ?? 0;
+    const netTransfers = transfersIn - transfersOut;
+    const estimatedOwners = Math.max(estimatedManagers * (number(player.selected_by_percent) / 100), 20_000);
+    const ownershipMomentum = netTransfers / estimatedOwners * 100;
+    const availabilityPenalty = player.status === "a" ? 0 : 18;
+    const raw = Math.abs(ownershipMomentum) * 18 + Math.min(28, Math.abs(netTransfers) / 4_000) + Math.abs(player.cost_change_event) * 18 - availabilityPenalty;
+    const confidence = Math.round(clamp(raw, 8, 94));
+    const rising = netTransfers > 25_000 && ownershipMomentum > 0.8 && player.status === "a";
+    const falling = netTransfers < -18_000 && ownershipMomentum < -0.7;
+    const direction = rising ? "Rise" : falling ? "Fall" : "Stable";
+    return {
+      player,
+      direction,
+      confidence: direction === "Stable" ? Math.min(confidence, 58) : confidence,
+      netTransfers,
+      ownershipMomentum,
+      why: direction === "Rise"
+        ? `${netTransfers.toLocaleString()} net transfers in; ${ownershipMomentum.toFixed(1)}% of estimated owners.`
+        : direction === "Fall"
+          ? `${Math.abs(netTransfers).toLocaleString()} net transfers out; ${Math.abs(ownershipMomentum).toFixed(1)}% of estimated owners.`
+          : "Transfer pressure has not crossed this model’s rise/fall signal.",
+    };
+  }).toSorted((a, b) => {
+    const directionWeight = (item: PriceSignal) => item.direction === "Stable" ? 0 : 1;
+    return directionWeight(b) - directionWeight(a) || b.confidence - a.confidence;
+  });
+}
+
+export function findDifferentials(data: CorePayload, event: FplEvent, ownershipLimit = 10) {
+  return data.players
+    .filter((player) => number(player.selected_by_percent) <= ownershipLimit && player.status === "a" && player.minutes > 0)
+    .map<DifferentialPick>((player) => {
+      const projection = projectPlayer(player, event, data);
+      const ownership = number(player.selected_by_percent);
+      const differentialScore = Math.round((projection.points * 10 + number(player.form) * 4 + (ownershipLimit - ownership) * 1.2) * 10) / 10;
+      return { ...projection, ownership, differentialScore };
+    })
+    .filter((player) => player.points >= 3.2)
+    .toSorted((a, b) => b.differentialScore - a.differentialScore);
+}
+
+export function getFixtureSwings(data: CorePayload, events: FplEvent[]): FixtureSwing[] {
+  const teamsById = new Map(data.teams.map((team) => [team.id, team]));
+  return data.teams.map((team) => {
+    const run = events.flatMap((event) => fixtureForPlayer({ team: team.id }, event, data.fixtures, teamsById).map((fixture) => ({
+      event: event.id,
+      opponent: fixture.opponent,
+      home: fixture.home,
+      fdr: fixture.fdr,
+    })));
+    const blanks = events.filter((event) => !run.some((fixture) => fixture.event === event.id)).length;
+    return {
+      team,
+      averageFdr: run.length ? run.reduce((sum, fixture) => sum + fixture.fdr, 0) / run.length : 5,
+      homeGames: run.filter((fixture) => fixture.home).length,
+      blanks,
+      fixtures: run,
+    };
+  }).toSorted((a, b) => a.averageFdr - b.averageFdr || b.homeGames - a.homeGames);
+}
+
+export function planChipTiming(data: CorePayload, squad: SquadPayload, events: FplEvent[]): ChipTiming[] {
+  const analyses = events.map((event) => analyseGameweek(data, squad, event));
+  const used = new Map(squad.usedChips.map((chip) => [chip.name, chip.event]));
+  const scoreFor = (key: ChipAdvice["key"], analysis: GameweekAnalysis) => {
+    const bench = analysis.bench.reduce((sum, player) => sum + player.points, 0);
+    const blanks = analysis.projections.filter((player) => player.fixtureCount === 0 || player.availability < 60).length;
+    const doubles = analysis.projections.filter((player) => player.fixtureCount > 1).length;
+    if (key === "bboost") return clamp(Math.round(bench * 6 + doubles * 5 - blanks * 10), 0, 100);
+    if (key === "3xc") return clamp(Math.round(analysis.captain.points * 8 + (analysis.captain.fixtureCount > 1 ? 22 : 0) - analysis.captain.fdr * 2), 0, 100);
+    if (key === "freehit") return clamp(blanks * 14 + doubles * 5, 0, 100);
+    const weak = analysis.projections.filter((player) => player.points < 3.2 || player.availability < 60).length;
+    return clamp(weak * 13 + blanks * 7, 0, 100);
+  };
+  const chips: Array<{ key: ChipAdvice["key"]; name: string }> = [
+    { key: "wildcard", name: "Wildcard" }, { key: "freehit", name: "Free Hit" },
+    { key: "bboost", name: "Bench Boost" }, { key: "3xc", name: "Triple Captain" },
+  ];
+  return chips.map((chip) => {
+    const ranked = analyses.map((analysis) => ({ analysis, score: scoreFor(chip.key, analysis) })).toSorted((a, b) => b.score - a.score);
+    const best = ranked[0];
+    const usedIn = used.get(chip.key);
+    const verdict: ChipAdvice["verdict"] = usedIn ? "Used" : best.score >= 80 ? "Use" : best.score >= 62 ? "Consider" : "Hold";
+    const why = usedIn ? `Already used in GW${usedIn}.` : chip.key === "3xc"
+      ? `${best.analysis.captain.player.web_name} projects ${best.analysis.captain.points.toFixed(1)} points in GW${best.analysis.event.id}.`
+      : chip.key === "bboost"
+        ? `Bench projects ${best.analysis.bench.reduce((sum, player) => sum + player.points, 0).toFixed(1)} points in GW${best.analysis.event.id}.`
+        : `${best.analysis.projections.filter((player) => player.fixtureCount === 0 || player.availability < 60).length} blank or availability risks in GW${best.analysis.event.id}.`;
+    return { key: chip.key, name: chip.name, bestEvent: best.analysis.event.id, score: usedIn ? 0 : best.score, verdict, why };
+  });
+}
+
+export function buildTeamOfWeek(data: CorePayload, event: FplEvent, livePlayers: LivePlayer[]) {
+  const stats = new Map(livePlayers.map((player) => [player.id, player.stats]));
+  const candidates = data.players.map<PlayerProjection>((player) => {
+    const total = stats.get(player.id)?.total_points ?? 0;
+    return { player, points: total, fdr: 3, opponent: `GW${event.id}`, home: false, fixtureCount: 1, availability: 100, minutesReliability: 1, explanation: [`${total} official points in GW${event.id}`] };
+  });
+  return chooseBestLineup(candidates);
+}
+
+export function getSetPieceLabel(player: FplPlayer) {
+  const roles: string[] = [];
+  if (player.penalties_order === 1) roles.push("First-choice penalties");
+  else if (player.penalties_order && player.penalties_order <= 3) roles.push(`Penalty order ${player.penalties_order}`);
+  if (player.direct_freekicks_order === 1) roles.push("First-choice direct free-kicks");
+  else if (player.direct_freekicks_order && player.direct_freekicks_order <= 3) roles.push(`Direct free-kick order ${player.direct_freekicks_order}`);
+  if (player.corners_and_indirect_freekicks_order === 1) roles.push("First-choice corners");
+  else if (player.corners_and_indirect_freekicks_order && player.corners_and_indirect_freekicks_order <= 3) roles.push(`Corner order ${player.corners_and_indirect_freekicks_order}`);
+  return roles;
 }
 
 export function analyseGameweek(data: CorePayload, squad: SquadPayload, event: FplEvent): GameweekAnalysis {
