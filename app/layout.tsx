@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "FPL Transfer Assistant",
-  description: "Explore fixture difficulty and transparent player transfer recommendations powered by official Fantasy Premier League data.",
+  title: "FPL Command | Squad & Transfer Planner",
+  description: "Plan your gameweek with squad projections, transfer comparisons, chip drafts and a six-week FPL planner.",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
