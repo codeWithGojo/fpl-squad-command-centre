@@ -103,6 +103,8 @@ export function projectPlayer(player: FplPlayer, event: FplEvent, data: CorePayl
   const fixtureCount = playerFixtures.length;
   const fdr = fixtureCount ? playerFixtures.reduce((sum, fixture) => sum + fixture.fdr, 0) / fixtureCount : 5;
   const homeRatio = fixtureCount ? playerFixtures.filter((fixture) => fixture.home).length / fixtureCount : 0;
+  const nextEvent = data.events.find(item => item.is_next) ?? data.events.find(item => !item.finished && Date.parse(item.deadline_time) > Date.now());
+  const useOfficial = event.id === nextEvent?.id && player.ep_next !== undefined && player.ep_next !== null;
   const officialExpected = number(player.ep_next, number(player.form));
   const form = number(player.form);
   const seasonRate = number(player.points_per_game);
@@ -118,7 +120,7 @@ export function projectPlayer(player: FplPlayer, event: FplEvent, data: CorePayl
     };
   }
 
-  const base = officialExpected * 0.55 + form * 0.3 + seasonRate * 0.15;
+  const base = useOfficial ? officialExpected * 0.55 + form * 0.3 + seasonRate * 0.15 : form * 0.65 + seasonRate * 0.35;
   const fixtureModifier = (3 - fdr) * 0.42;
   const homeModifier = homeRatio * 0.25;
   const reliabilityFactor = 0.72 + minutesReliability * 0.28;
@@ -137,8 +139,8 @@ export function projectPlayer(player: FplPlayer, event: FplEvent, data: CorePayl
     availability,
     minutesReliability,
     explanation: [
-      `FPL expected points ${officialExpected.toFixed(1)} (55% weight)`,
-      `Form ${form.toFixed(1)} (30%) and season rate ${seasonRate.toFixed(1)} (15%)`,
+      useOfficial ? `FPL expected points ${officialExpected.toFixed(1)} (55% weight)` : "Future GW estimate: official ep_next is not reused",
+      `Form ${form.toFixed(1)} (${useOfficial ? 30 : 65}%) and season rate ${seasonRate.toFixed(1)} (${useOfficial ? 15 : 35}%)`,
       `FDR ${fdr.toFixed(1)}${homeRatio ? ` with ${Math.round(homeRatio * 100)}% at home` : " away"}`,
       `${availability}% availability and ${Math.round(minutesReliability * 100)}% minutes reliability`,
     ],

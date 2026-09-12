@@ -4,6 +4,14 @@ A public-facing Fantasy Premier League decision dashboard built with Next.js and
 
 ## Features
 
+- Redesigned charcoal, white and blue workspace with responsive navigation and skeleton loading
+- Six-week transfer planner with device-local save/restore and editable bank, selling prices and free transfers
+- Roll-versus-transfer comparisons using full XI projections after hit costs
+- Budget-constrained Wildcard and Free Hit drafts with squad/club constraints
+- Safe, balanced and aggressive ranking preferences; 1%, 5% and 10% differential filters
+
+Run `node tests/planner.cjs` for deterministic planner checks. Planning assumes current player prices remain fixed, no chips within a transfer sequence, and standard transfer rollover up to five. Seasonal exceptions are not inferred. Chip drafts are separate heuristic suggestions, not guaranteed optimal squads. Confirm chip availability, bank, current squad and selling values in official FPL. Public imports are published squads, not private current selections.
+
 - Five-gameweek fixture difficulty heatmap
 - Player transfer-value analysis with visible scoring logic
 - Personal squad import from a public FPL team ID
