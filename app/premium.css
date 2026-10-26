@@ -21,3 +21,5 @@ body{font-family:Manrope,system-ui,sans-serif;background:var(--background);font-
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.tactics-board:hover .formation-dots span{transform:none}}
 
 .fpl-connect-dialog{border-radius:12px;background:#fff}.fpl-connect-heading{background:#17382c}.fpl-connect-dialog button:focus-visible,.fpl-connect-dialog input:focus-visible{outline-color:#548c6b}
+
+@media(max-width:700px){.fpl-workspace main>[data-slot=tabs]>[data-slot=tabs-list]{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));height:auto;overflow:visible}.fpl-workspace main>[data-slot=tabs]>[data-slot=tabs-list]>[data-slot=tabs-trigger]{min-width:0;width:100%;justify-content:flex-start;padding-inline:12px}}
