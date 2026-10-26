@@ -19,3 +19,5 @@ body{font-family:Manrope,system-ui,sans-serif;background:var(--background);font-
 @media(max-width:360px){.onboarding-copy{padding-inline:20px}.onboarding-copy h3{font-size:38px}.gameweek-strip>div{padding:14px 12px}.gameweek-strip strong{font-size:12px}.fpl-topbar>button{font-size:9px}.onboarding-links{gap:10px}.onboarding-links>span{font-size:7px}}
 @media(prefers-reduced-motion:no-preference){.squad-onboarding{animation:workspace-enter .45s ease-out}.formation-dots span{transition:transform .25s}.tactics-board:hover .formation-dots span{transform:translateY(-3px)}@keyframes workspace-enter{from{opacity:.3;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.tactics-board:hover .formation-dots span{transform:none}}
+
+.fpl-connect-dialog{border-radius:12px;background:#fff}.fpl-connect-heading{background:#17382c}.fpl-connect-dialog button:focus-visible,.fpl-connect-dialog input:focus-visible{outline-color:#548c6b}

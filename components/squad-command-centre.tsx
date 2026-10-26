@@ -10,9 +10,7 @@ import {
   Gauge,
   Info,
   RefreshCw,
-  Sparkles,
   Target,
-  TrendingUp,
   Users,
   WandSparkles,
 } from "lucide-react";
