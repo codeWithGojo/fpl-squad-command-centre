@@ -47,23 +47,9 @@ export function SquadCommandCentre({ data, squad, onConnect }: Props) {
 
   if (!squad) {
     return (
-      <section className="relative overflow-hidden rounded-[2rem] bg-[#160019] text-white shadow-[0_24px_80px_rgba(30,0,34,.2)]">
-        <div className="absolute inset-0 opacity-20 [background-image:linear-gradient(rgba(255,255,255,.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.08)_1px,transparent_1px)] [background-size:42px_42px]" />
-        <div className="relative grid gap-10 p-6 sm:p-10 lg:grid-cols-[1fr_.9fr] lg:items-center lg:p-14">
-          <div>
-            <span className="inline-flex items-center gap-2 rounded-full border border-[#00ff87]/25 bg-[#00ff87]/10 px-3 py-1.5 text-xs font-black uppercase tracking-[.15em] text-[#75ffbd]"><Sparkles className="size-3.5" />Personal squad intelligence</span>
-            <h3 className="mt-5 max-w-2xl text-4xl font-black leading-[1.02] tracking-[-.045em] sm:text-5xl">Turn your 15 players into a clear gameweek plan.</h3>
-            <p className="mt-4 max-w-xl text-base leading-7 text-white/65">Connect a public FPL team ID to calculate your best XI, projected score, captain, transfer priorities and chip timing.</p>
-            <Button onClick={onConnect} className="mt-7 h-12 rounded-xl bg-[#00ff87] px-6 font-black text-[#160019] hover:bg-[#70ffba]"><Target /> Analyse my team</Button>
-            <p className="mt-3 text-xs text-white/45">No password needed. Your team ID stays in this browser.</p>
-          </div>
-          <div className="relative mx-auto aspect-[4/5] w-full max-w-sm overflow-hidden rounded-[2rem] border border-white/15 bg-[linear-gradient(180deg,#159858,#08733e)] shadow-2xl">
-            <div className="absolute inset-5 rounded-[1.4rem] border border-white/35" />
-            <div className="absolute left-1/2 top-1/2 size-28 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/30" />
-            <div className="absolute inset-x-0 top-1/2 border-t border-white/30" />
-            <div className="relative grid h-full place-items-center p-8 text-center"><div><div className="mx-auto grid size-20 place-items-center rounded-3xl border border-white/25 bg-white/15 backdrop-blur"><TrendingUp className="size-9 text-[#b5ffda]" /></div><p className="mt-5 text-2xl font-black">Your best XI</p><p className="mt-1 text-sm text-white/65">Projected before the deadline</p></div></div>
-          </div>
-        </div>
+      <section className="squad-onboarding">
+        <div className="onboarding-copy"><p className="fpl-eyebrow"><span/> YOUR GAMEWEEK. YOUR CALL.</p><h3>Fifteen players.<br/>One better plan.</h3><p>Bring your squad into focus. Find your starting XI, compare transfer options and choose a captain with the reasoning in front of you.</p><Button onClick={onConnect} className="connect-primary">Connect my FPL team <ArrowUpRight size={17}/></Button><span className="connect-reassurance">Just your public team ID. No password needed.</span><div className="onboarding-links"><span><Target size={15}/> Best XI & captain</span><span><RefreshCw size={15}/> Transfer priorities</span><span><CalendarClock size={15}/> Chip timing</span></div></div>
+        <div className="tactics-board" aria-label="Illustration of a four four two formation"><div className="tactics-heading"><span>THE TACTICS BOARD</span><span>4—4—2</span></div><div className="pitch-lines" aria-hidden="true"><i className="pitch-circle"/><i className="pitch-box top"/><i className="pitch-box bottom"/></div><div className="formation-dots" aria-hidden="true">{[2,4,4,1].map((count,row)=><div key={row}>{Array.from({length:count},(_,i)=><span key={i} className={row===3?"keeper":""}><svg viewBox="0 0 32 32" fill="none"><path d="m11 5-7 5 4 7 3-2v13h10V15l3 2 4-7-7-5c-2 3-8 3-10 0Z" fill="currentColor"/></svg></span>)}</div>)}</div><div className="pitch-caption"><span><i/> Your team goes here</span><strong>Make it yours ↗</strong></div></div>
       </section>
     );
   }
